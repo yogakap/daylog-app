@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>日報</title>
+<style>
+:root{--bg:#f3f5f8;--fg:#1c2430;--mut:#667085;--card:#fff;--line:#dde2ea;--acc:#1f5f8b;--accfg:#fff;--bar:#1f5f8b;--err:#b42318;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10151c;--fg:#e6eaf0;--mut:#93a0b3;--card:#181f29;--line:#2a3441;--acc:#6fb0e0;--accfg:#0b1118;--bar:#6fb0e0;--err:#f97066}}
+:root[data-theme="dark"]{--bg:#10151c;--fg:#e6eaf0;--mut:#93a0b3;--card:#181f29;--line:#2a3441;--acc:#6fb0e0;--accfg:#0b1118;--bar:#6fb0e0;--err:#f97066}
+*{box-sizing:border-box}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:16px/1.65 -apple-system,"Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+main{max-width:700px;margin:0 auto;padding:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+h1{font-size:20px;margin:0}
+h2{font-size:14px;margin:0 0 8px;color:var(--mut);font-weight:600}
+nav{display:flex;gap:6px;margin-bottom:14px}
+nav a{padding:6px 14px;border-radius:6px;border:1px solid var(--line);color:var(--fg);text-decoration:none;font-size:14px}
+nav a[aria-current]{background:var(--acc);color:var(--accfg);border-color:var(--acc)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 3px}
+input,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+textarea{min-height:76px;resize:vertical}
+:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.row{display:flex;gap:10px}.row>div{flex:1}
+button{font:inherit;background:var(--acc);color:var(--accfg);border:0;border-radius:6px;padding:9px 16px;cursor:pointer}
+button.sub{background:transparent;color:var(--fg);border:1px solid var(--line)}
+button:disabled{opacity:.5}
+.btns{margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#st{font-size:13px;color:var(--mut)}
+#msg{color:var(--err);font-size:14px;white-space:pre-wrap}
+.item{padding:8px 0;border-top:1px solid var(--line);cursor:pointer}
+.item:first-child{border-top:0}
+.item span{color:var(--mut);font-size:13px;margin-left:8px}
+.item p{margin:0;font-size:14px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scroll{overflow-x:auto}
+.hint{font-size:13px;color:var(--mut);margin:0 0 6px}
+
+select{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.arow{display:flex;gap:8px;margin-bottom:8px;align-items:center}
+.arow select{flex:1;min-width:0}
+.arow input{width:92px}
+button.x{padding:6px 12px}
+.chip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:999px;padding:2px 4px 2px 12px;margin:0 6px 6px 0;font-size:14px}
+.chip button{padding:0 8px;background:transparent;color:var(--mut);font-size:16px;line-height:1.4}
+</style></head><body><main>
+<header><h1>日報</h1><div><button class="sub" id="reload">再読み込み</button> <button class="sub" id="gear">接続設定</button></div></header>
+<nav><a href="index.html" aria-current="page">日報</a><a href="works.html">制作物</a></nav>
+<div id="msg" class="card" hidden></div>
+<div class="card" id="cfgbox" hidden>
+  <h2>GitHubとの接続設定</h2>
+  <p class="hint">この端末のブラウザにだけ保存されます。PCとスマホで、それぞれ入力してください。</p>
+  <label for="owner">GitHubのユーザー名</label><input id="owner" autocomplete="off" autocapitalize="none">
+  <label for="repo">日記用リポジトリ名(非公開)</label><input id="repo" autocomplete="off" autocapitalize="none" placeholder="daylog-data">
+  <label for="branch">ブランチ</label><input id="branch" value="main" autocapitalize="none">
+  <label for="token">アクセストークン</label><input id="token" type="password" autocomplete="off">
+  <div class="btns"><button id="cfgsave">保存して接続</button></div>
+</div>
+
+<div class="card" id="form">
+  <label for="date">日付</label><input type="date" id="date">
+  <label>活動と作業時間(分)</label>
+  <div id="acts"></div>
+  <div class="btns" style="margin-top:4px"><button class="sub" id="addrow" type="button">＋ 行を追加</button><span id="tot"></span></div>
+  <label for="progress">進捗</label><textarea id="progress"></textarea>
+  <label for="memo">メモ</label><textarea id="memo"></textarea>
+  <div class="btns"><button id="save">保存</button><button class="sub" id="del">この日を削除</button><span id="st"></span></div>
+</div>
+<div class="card"><h2>作業時間(直近14日)</h2><div class="scroll"><svg id="chart" width="100%" viewBox="0 0 560 160" role="img" aria-label="作業時間の棒グラフ"></svg></div></div>
+<div class="card"><h2>これまでの記録</h2><div id="list"></div></div>
+<div class="card"><h2>活動の種類(プルダウンの選択肢)</h2><div id="actlist"></div><p class="hint">追加は、プルダウンの「＋ 新しい活動を追加…」から行えます。ここで消しても、過去の記録の活動名は変わりません。</p></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const b64enc=t=>{const u=new TextEncoder().encode(t);let s='';u.forEach(c=>s+=String.fromCharCode(c));return btoa(s)};
+const b64dec=b=>{const s=atob(b.replace(/\s/g,''));return new TextDecoder().decode(Uint8Array.from(s,c=>c.charCodeAt(0)))};
+let cfg=null,cache={},entries={},CK='';
+const msg=t=>{const m=$('#msg');m.textContent=t||'';m.hidden=!t};
+const setSt=t=>{$('#st').textContent=t};
+const ref=()=>'?ref='+encodeURIComponent(cfg.branch||'main');
+async function gh(path,opt={}){
+  const r=await fetch('https://api.github.com/repos/'+cfg.owner+'/'+cfg.repo+path,{...opt,cache:'no-store',headers:{Accept:'application/vnd.github+json',Authorization:'Bearer '+cfg.token,'Content-Type':'application/json'}});
+  if(r.status===404)return null;
+  if(!r.ok)throw new Error('GitHubからエラーが返りました('+r.status+')。トークンの権限と有効期限を確認してください。');
+  return r.json();
+}
+function parse(t){
+  const e={},h=Object.fromEntries(APP.secs.map(([k,n])=>[n,k]));let body=t;
+  const m=t.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if(m){m[1].split('\n').forEach(l=>{const i=l.indexOf(':');if(i>0)e[l.slice(0,i).trim()]=l.slice(i+1).trim()});body=m[2]}
+  body.split(/^## /m).slice(1).forEach(s=>{const i=s.indexOf('\n'),n=(i<0?s:s.slice(0,i)).trim();if(h[n])e[h[n]]=i<0?'':s.slice(i+1).trim()});
+  return e;
+}
+const ser=e=>'---\n'+APP.meta.map(k=>k+': '+String(e[k]==null?'':e[k]).replace(/\n/g,' ')).join('\n')+'\n---\n\n'+APP.secs.map(([k,n])=>'## '+n+'\n'+(e[k]||'').replace(/^## /gm,'### ')+'\n').join('\n');
+async function load(){
+  if(!cfg||!cfg.token){$('#cfgbox').hidden=false;return}
+  msg('');setSt('読み込み中…');
+  try{
+    if(!(await gh('')))throw new Error('リポジトリが見つかりません。ユーザー名とリポジトリ名、トークンの対象リポジトリを確認してください。');
+    const l=(await gh('/contents/'+APP.dir+ref()))||[];
+    const files=l.filter(x=>/\.md$/.test(x.name)).sort((a,b)=>b.name.localeCompare(a.name)).slice(0,80);
+    const next={};entries={};
+    await Promise.all(files.map(async f=>{
+      let e=cache[f.sha];
+      if(!e){const j=await gh('/contents/'+APP.dir+'/'+encodeURIComponent(f.name)+ref());e=parse(b64dec(j.content))}
+      next[f.sha]=e;entries[f.name.slice(0,-3)]=e}));
+    cache=next;store.set(CK,JSON.stringify(cache));setSt('');APP.after();
+  }catch(e){setSt('');msg(String(e.message||e)+'\nネットワークにつながっているかも確認してください。')}
+}
+async function save(){
+  if(!cfg)return;
+  let k=APP.key();if(!k&&APP.newKey)k=APP.newKey();if(!k)return;
+  const e=APP.read(k);if(APP.check&&!APP.check(e))return;
+  $('#save').disabled=true;setSt('保存中…');msg('');
+  try{
+    const p='/contents/'+APP.dir+'/'+k+'.md',cur=await gh(p+ref());
+    await gh(p,{method:'PUT',body:JSON.stringify({message:APP.dir+': '+k,content:b64enc(ser(e)),branch:cfg.branch||'main',...(cur?{sha:cur.sha}:{})})});
+    if(APP.saved)APP.saved(k);
+    await load();setSt('保存しました');
+  }catch(err){setSt('');msg('保存できませんでした。\n'+err.message)}
+  $('#save').disabled=false;
+}
+async function del(){
+  const k=APP.key();
+  if(!k){msg('削除する記録を、一覧から選んでください。');return}
+  if(!confirm('この記録を削除しますか?(履歴には残ります)'))return;
+  try{
+    const p='/contents/'+APP.dir+'/'+k+'.md',cur=await gh(p+ref());
+    if(!cur){msg('この記録はまだ保存されていません。');return}
+    await gh(p,{method:'DELETE',body:JSON.stringify({message:'delete: '+k,sha:cur.sha,branch:cfg.branch||'main'})});
+    if(APP.reset)APP.reset();
+    await load();APP.fill({});setSt('削除しました');
+  }catch(err){msg('削除できませんでした。\n'+err.message)}
+}
+function start(){
+  CK='log-cache-v2-'+APP.dir;
+  try{cfg=JSON.parse(store.get('log-cfg')||'null')}catch(e){}
+  try{cache=JSON.parse(store.get(CK)||'{}')}catch(e){}
+  $('#save').addEventListener('click',save);
+  $('#del').addEventListener('click',del);
+  $('#reload').addEventListener('click',load);
+  $('#gear').addEventListener('click',()=>{const b=$('#cfgbox');b.hidden=!b.hidden;
+    if(cfg){$('#owner').value=cfg.owner||'';$('#repo').value=cfg.repo||'';$('#branch').value=cfg.branch||'main'}});
+  $('#cfgsave').addEventListener('click',()=>{
+    const c={owner:$('#owner').value.trim(),repo:$('#repo').value.trim(),branch:$('#branch').value.trim()||'main',token:$('#token').value.trim()||(cfg&&cfg.token)||''};
+    if(!c.owner||!c.repo||!c.token){msg('ユーザー名、リポジトリ名、トークンをすべて入力してください。');return}
+    cfg=c;store.set('log-cfg',JSON.stringify(cfg));$('#token').value='';$('#cfgbox').hidden=true;load();
+  });
+  APP.init();load();
+}
+
+let acts=[];
+try{acts=JSON.parse(store.get('log-acts')||'[]')}catch(e){}
+const NEW='__new__';
+function actsOf(e){
+  const r=[];(e.acts||'').split('\n').forEach(l=>{const m=l.match(/^- (.*): (\d+)分\s*$/);if(m)r.push({n:m[1],m:Number(m[2])})});
+  if(!r.length&&(Number(e.mins)||e.activity))r.push({n:e.activity||'',m:Number(e.mins)||0});
+  return r;
+}
+function opts(sel,val){
+  sel.innerHTML='';
+  const add=(v,t)=>{const o=document.createElement('option');o.value=v;o.textContent=t;sel.append(o)};
+  add('','活動を選ぶ');
+  const names=acts.slice();if(val&&!names.includes(val))names.push(val);
+  names.forEach(n=>add(n,n));
+  add(NEW,'＋ 新しい活動を追加…');
+  sel.value=val||'';
+}
+function total(){let s=0;document.querySelectorAll('#acts input').forEach(i=>s+=Number(i.value)||0);$('#tot').textContent='合計 '+s+'分'}
+function refresh(){
+  document.querySelectorAll('#acts select').forEach(s=>{const v=s.value===NEW?'':s.value;opts(s,v);s.dataset.prev=v});
+  const box=$('#actlist');box.innerHTML='';
+  if(!acts.length){const p=document.createElement('p');p.className='hint';p.textContent='まだありません。';box.append(p);return}
+  acts.forEach(n=>{const c=document.createElement('span');c.className='chip';c.append(n);
+    const b=document.createElement('button');b.type='button';b.textContent='×';b.setAttribute('aria-label',n+'を選択肢から削除');
+    b.onclick=()=>{if(confirm('「'+n+'」を選択肢から削除しますか?'))pushActs(l=>l.filter(x=>x!==n))};
+    c.append(b);box.append(c)});
+}
+async function pushActs(fn){
+  if(!cfg)return;
+  try{
+    const cur=await gh('/contents/activities.json'+ref());
+    const nl=fn(cur?(JSON.parse(b64dec(cur.content)).list||[]):[]);
+    await gh('/contents/activities.json',{method:'PUT',body:JSON.stringify({message:'activities',content:b64enc(JSON.stringify({list:nl},null,1)),branch:cfg.branch||'main',...(cur?{sha:cur.sha}:{})})});
+    acts=nl;store.set('log-acts',JSON.stringify(acts));refresh();
+  }catch(e){msg('活動の種類を保存できませんでした。\n'+e.message)}
+}
+async function loadActs(){
+  try{const cur=await gh('/contents/activities.json'+ref());if(!cur)return;
+    acts=JSON.parse(b64dec(cur.content)).list||[];store.set('log-acts',JSON.stringify(acts));refresh()}catch(e){}
+}
+async function addAct(name){
+  if(!acts.includes(name))acts.push(name);
+  store.set('log-acts',JSON.stringify(acts));refresh();
+  await pushActs(l=>l.includes(name)?l:l.concat(name));
+}
+function addRow(n,m){
+  const row=document.createElement('div');row.className='arow';
+  const sel=document.createElement('select');sel.setAttribute('aria-label','活動');opts(sel,n);sel.dataset.prev=n||'';
+  const inp=document.createElement('input');inp.type='number';inp.min='0';inp.step='5';inp.inputMode='numeric';inp.placeholder='分';inp.setAttribute('aria-label','作業時間(分)');if(m)inp.value=m;
+  const x=document.createElement('button');x.type='button';x.className='sub x';x.textContent='×';x.setAttribute('aria-label','この行を削除');
+  sel.addEventListener('change',async()=>{
+    if(sel.value===NEW){
+      const name=(prompt('新しい活動の名前')||'').trim().replace(/\s+/g,' ');
+      if(!name){sel.value=sel.dataset.prev;return}
+      await addAct(name);opts(sel,name);
+    }
+    sel.dataset.prev=sel.value;
+  });
+  inp.addEventListener('input',total);
+  x.onclick=()=>{row.remove();total()};
+  row.append(sel,inp,x);$('#acts').append(row);
+}
+function rowsData(){return [...document.querySelectorAll('#acts .arow')].map(r=>({n:r.querySelector('select').value,m:Number(r.querySelector('input').value)||0})).map(r=>({n:r.n===NEW?'':r.n,m:r.m})).filter(r=>r.n||r.m)}
+function chart(){
+  const days=[],now=new Date();
+  for(let i=13;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);days.push(ymd(d))}
+  const v=days.map(d=>Number((entries[d]||{}).mins)||0),max=Math.max(60,...v);let s='';
+  days.forEach((d,i)=>{const h=v[i]/max*108,x=10+i*39;
+    s+='<rect x="'+x+'" y="'+(120-h)+'" width="28" height="'+h+'" rx="3" fill="var(--bar)"/>';
+    if(v[i])s+='<text x="'+(x+14)+'" y="'+(114-h)+'" font-size="10" text-anchor="middle" fill="var(--mut)">'+v[i]+'</text>';
+    s+='<text x="'+(x+14)+'" y="140" font-size="10" text-anchor="middle" fill="var(--mut)">'+d.slice(8)+'</text>'});
+  $('#chart').innerHTML=s+'<line x1="0" x2="560" y1="120" y2="120" stroke="var(--line)"/>';
+}
+function list(){
+  const box=$('#list'),keys=Object.keys(entries).sort().reverse();box.innerHTML='';
+  if(!keys.length){const p=document.createElement('p');p.className='hint';p.textContent='まだ記録がありません。今日の分を書いて保存してみましょう。';box.append(p);return}
+  keys.forEach(k=>{const e=entries[k],a=actsOf(e),div=document.createElement('div');div.className='item';
+    const b=document.createElement('b');b.textContent=k;
+    const t=Number(e.mins)||a.reduce((s,r)=>s+r.m,0);
+    const s=document.createElement('span');s.textContent=[t?t+'分':'',[...new Set(a.map(r=>r.n).filter(Boolean))].join(', ')].filter(Boolean).join(' / ');
+    const p=document.createElement('p');p.textContent=e.progress||'';
+    div.append(b,s,p);div.onclick=()=>{$('#date').value=k;APP.fill();scrollTo({top:0,behavior:'smooth'})};box.append(div)});
+}
+const APP={dir:'entries',meta:['date','mins'],secs:[['acts','活動時間'],['progress','進捗'],['memo','メモ']],
+  key:()=>$('#date').value,
+  read:()=>{const r=rowsData();return{date:$('#date').value,mins:r.reduce((s,x)=>s+x.m,0),acts:r.map(x=>'- '+x.n+': '+x.m+'分').join('\n'),progress:$('#progress').value,memo:$('#memo').value}},
+  check(){if(rowsData().some(r=>r.m&&!r.n)){msg('作業時間を入れた行は、活動を選んでください。');return false}return true},
+  fill(){const e=entries[$('#date').value]||{};$('#acts').innerHTML='';
+    const a=actsOf(e);(a.length?a:[{n:'',m:0}]).forEach(x=>addRow(x.n,x.m));
+    $('#progress').value=e.progress||'';$('#memo').value=e.memo||'';total()},
+  init(){$('#date').value=ymd(new Date());$('#date').addEventListener('change',()=>APP.fill());
+    $('#addrow').addEventListener('click',()=>{addRow('',0);total()});APP.fill();chart();list();refresh()},
+  after(){APP.fill();chart();list();loadActs()}};
+
+start();
+</script></body></html>
